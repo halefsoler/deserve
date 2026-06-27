@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <title>Deserve — Conquiste o que você merece</title>
+  <meta name="description" content="Tarefas, conquistas e recompensas para a família. Os filhos realizam, os pais aprovam, todos celebram." />
+  <meta name="theme-color" content="#0b0b0f" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Deserve" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=51" />
+</head>
+<body>
+  <div id="app" aria-live="polite"></div>
+  <div id="sheet-root"></div>
+  <div id="toast-root"></div>
+  <canvas id="confetti-canvas"></canvas>
+
+  <script src="js/db.js?v=51"></script>
+  <script src="js/orb.js?v=51"></script>
+  <script src="js/store.js?v=51"></script>
+  <script src="js/app.js?v=51"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
+  </script>
+</body>
+</html>
