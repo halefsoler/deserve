@@ -694,9 +694,16 @@
               </div>`).join('')}
           </div>
           <button class="btn btn-aurora" id="finish" style="margin-top:20px" ${kids.length ? '' : 'disabled'}>Criar família ✨</button>
+          <button class="btn btn-ghost" id="setup-demo" style="margin-top:10px">Explorar com dados de exemplo</button>
+          <p class="xsmall muted" style="text-align:center;margin-top:6px">Cria uma família pronta (Theo e Mia) com missões para você testar.</p>
         </div>
       </div>`;
       mountOrb($app.querySelector('[data-orb]'), 34);
+      $app.querySelector('#setup-demo').onclick = () => {
+        A.seedDemo();
+        celebrate('Família demo criada! PIN dos pais: 1234', '🎉');
+        go(''); render();
+      };
       $app.querySelector('#add-kid').onclick = () => openKidSheet(k => { kids.push(k); renderSetup(); });
       $app.querySelectorAll('[data-rm]').forEach(b =>
         b.onclick = () => { kids.splice(+b.dataset.rm, 1); renderSetup(); });
