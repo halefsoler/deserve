@@ -1571,3 +1571,6 @@ audio { width: 100%; margin-top: 10px; }
 }
 .phome-mission .pm-status { flex: 0 0 auto; font-size: 14px; }
 .phome-mission.is-done .pm-title { opacity: .55; text-decoration: line-through; }
+
+/* seletor de estilo por filho (mais compacto p/ caber 3 opções no sheet) */
+.segmented.seg-style button { font-size: 12px; padding-left: 4px; padding-right: 4px; }

@@ -1,13 +1,13 @@
 /* Deserve — Service Worker (app shell, offline-first) */
-const CACHE = 'deserve-v53';
+const CACHE = 'deserve-v54';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=53',
-  './js/db.js?v=53',
-  './js/orb.js?v=53',
-  './js/store.js?v=53',
-  './js/app.js?v=53',
+  './css/styles.css?v=54',
+  './js/db.js?v=54',
+  './js/orb.js?v=54',
+  './js/store.js?v=54',
+  './js/app.js?v=54',
   './manifest.webmanifest',
   './icons/icon-192.png',
 ];

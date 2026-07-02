@@ -313,8 +313,8 @@
 
     /* Dados de exemplo para explorar o app */
     seedDemo() {
-      const theo = { id: uid(), name: 'Theo', emoji: '🦸', color: '#46b6ff', points: 70, age: 5, skin: 'superman' };
-      const mia = { id: uid(), name: 'Mia', emoji: '🐞', color: '#ff5caa', points: 95, age: 7, skin: 'ladybug' };
+      const theo = { id: uid(), name: 'Theo', emoji: '🦸', color: '#46b6ff', points: 70, age: 5, skin: 'superman', style: 'tranquilo' };
+      const mia = { id: uid(), name: 'Mia', emoji: '🐞', color: '#ff5caa', points: 95, age: 7, skin: 'ladybug', style: 'rigoroso' };
       state.family.name = 'Família Demo';
       state.parentPin = state.parentPin || '1234';
       state.children = [theo, mia];

@@ -41,10 +41,20 @@
     equilibrado: { label: '⚖️ Equilibrado', desc: 'meio-termo entre esforço e recompensa',        taskRec: 15, costMult: 1.0 },
     rigoroso:    { label: '💪 Rigoroso',     desc: 'pontos mais enxutos, prêmios mais conquistados', taskRec: 10, costMult: 1.3 },
   };
-  const parentStyle = () => STYLES[state.settings?.parentStyle] || STYLES.equilibrado;
+  // Resolve o estilo: se a missão/prêmio é de um único filho, usa o estilo dele;
+  // caso contrário (vários filhos) usa o padrão da família.
+  const styleKeyFor = (childIds) => {
+    const ids = Array.isArray(childIds) ? childIds : (childIds ? [childIds] : []);
+    if (ids.length === 1) {
+      const c = childById(ids[0]);
+      if (c && c.style && STYLES[c.style]) return c.style;
+    }
+    return state.settings?.parentStyle || 'equilibrado';
+  };
+  const parentStyle = (childIds) => STYLES[styleKeyFor(childIds)] || STYLES.equilibrado;
   const TASK_POINT_CHIPS = [5, 10, 15, 20, 30];
   const REWARD_COST_BY_TYPE = { mesada: 120, compra: 50, desejo: 80 };
-  const recReward = (type) => Math.round((REWARD_COST_BY_TYPE[type] || 80) * parentStyle().costMult / 5) * 5;
+  const recReward = (type, childIds) => Math.round((REWARD_COST_BY_TYPE[type] || 80) * parentStyle(childIds).costMult / 5) * 5;
 
   // ícones de linha (monocromáticos) para a tela de ajustes
   const ICONS = {
@@ -446,12 +456,12 @@
 
       ${role === 'parent' ? `
       <div class="settings-block" style="margin-top:18px">
-        <p class="settings-label">estilo com os filhos</p>
+        <p class="settings-label">estilo padrão da família</p>
         <div class="segmented" id="style-seg">
           ${Object.entries(STYLES).map(([v, o]) =>
             `<button data-s="${v}" class="${v === (s.parentStyle || 'equilibrado') ? 'active' : ''}">${o.label}</button>`).join('')}
         </div>
-        <p class="xsmall muted" id="style-desc" style="margin-top:9px">💡 ${parentStyle().desc} — usamos isso para sugerir pontos e custos.</p>
+        <p class="xsmall muted" id="style-desc" style="margin-top:9px">💡 ${parentStyle().desc} — usado quando a missão é de vários filhos. Cada filho pode ter o seu próprio estilo no perfil.</p>
       </div>` : ''}
 
       <div class="settings-group">
@@ -724,6 +734,7 @@
     let emoji = existing?.emoji || EMOJIS_KID[0];
     let color = existing?.color || KID_COLORS[0];
     let age = existing?.age || '';
+    let style = existing?.style || 'equilibrado';
     let photo = existing?.photo || null;      // chave no IndexedDB
     let photoBlob = null;                       // novo blob ainda não salvo
     openSheet(`
@@ -734,6 +745,12 @@
       <div class="field"><label>Idade</label>
         <input class="input" id="kid-age" inputmode="numeric" placeholder="ex: 7" maxlength="2" value="${existing?.age || ''}" />
         <p class="xsmall muted" style="margin-top:5px">Personagens (Batman, Barbie…) ficam disponíveis para 5–10 anos.</p>
+      </div>
+      <div class="field"><label>Estilo com este filho</label>
+        <div class="segmented seg-style" id="kid-style">
+          ${Object.entries(STYLES).map(([v, o]) => `<button data-st="${v}" class="${v === style ? 'active' : ''}">${o.label}</button>`).join('')}
+        </div>
+        <p class="xsmall muted" id="kid-style-desc" style="margin-top:6px">💡 ${STYLES[style].desc} — guia as sugestões de pontos e custos.</p>
       </div>
       <div class="field"><label>Foto do perfil</label>
         <div class="kid-photo-row">
@@ -798,13 +815,19 @@
           x.style.border = `2.5px solid ${x === b ? '#fff' : 'transparent'}`;
         });
       });
+      sheet.querySelectorAll('#kid-style button').forEach(b => b.onclick = () => {
+        style = b.dataset.st;
+        sheet.querySelectorAll('#kid-style button').forEach(x => x.classList.toggle('active', x === b));
+        const d = sheet.querySelector('#kid-style-desc');
+        if (d) d.textContent = `💡 ${STYLES[style].desc} — guia as sugestões de pontos e custos.`;
+      });
       sheet.querySelector('#kid-save').onclick = async () => {
         const name = sheet.querySelector('#kid-name').value.trim();
         const ageVal = parseInt(sheet.querySelector('#kid-age').value) || 0;
         if (!name) { toast('Dê um nome', '✏️'); return; }
         // salva a foto nova no IndexedDB
         if (photoBlob) { photo = 'av-' + H.uid(); await EvidenceDB.put(photo, photoBlob); }
-        onSave({ name, emoji, color, age: ageVal, photo: photo || null });
+        onSave({ name, emoji, color, age: ageVal, style, photo: photo || null });
         closeSheet();
       };
     });
@@ -1050,11 +1073,11 @@
         </div>
       </div>
       <div class="field"><label>Pontos ⭐</label>
-        <input class="input" id="t-points" inputmode="numeric" value="${existing?.points ?? parentStyle().taskRec}" />
+        <input class="input" id="t-points" inputmode="numeric" value="${existing?.points ?? parentStyle(childIds).taskRec}" />
         <div class="chips" id="t-points-chips" style="margin-top:9px">
           ${TASK_POINT_CHIPS.map(p => `<button class="chip" data-p="${p}">${p}</button>`).join('')}
         </div>
-        <p class="xsmall muted" style="margin-top:8px">💡 estilo ${parentStyle().label}: simples ~${Math.max(5, parentStyle().taskRec - 5)} pts · difíceis ~${parentStyle().taskRec + 15} pts</p>
+        <p class="xsmall muted" id="t-style-hint" style="margin-top:8px"></p>
       </div>
       <div class="field"><label>Evidência exigida</label>
         <div class="segmented" id="t-evidence">
@@ -1096,6 +1119,15 @@
         pInput.value = c.dataset.p; syncPChips();
       });
       pInput.oninput = syncPChips; syncPChips();
+      const styleHintEl = sheet.querySelector('#t-style-hint');
+      const updateStyleHint = () => {
+        const ps = parentStyle(childIds);
+        const oneKid = childIds.length === 1;
+        const c = oneKid ? childById(childIds[0]) : null;
+        const who = c ? `de ${esc(c.name)}` : 'padrão da família';
+        styleHintEl.innerHTML = `💡 estilo ${who} · ${ps.label}: simples ~${Math.max(5, ps.taskRec - 5)} pts · difíceis ~${ps.taskRec + 15} pts`;
+      };
+      updateStyleHint();
       sheet.querySelectorAll('#t-emojis button').forEach(b => b.onclick = () => {
         emoji = b.dataset.e;
         sheet.querySelectorAll('#t-emojis button').forEach(x => x.classList.toggle('active', x === b));
@@ -1104,6 +1136,7 @@
         const id = b.dataset.k;
         childIds = childIds.includes(id) ? childIds.filter(x => x !== id) : [...childIds, id];
         b.classList.toggle('active');
+        updateStyleHint();
       });
       sheet.querySelectorAll('#t-evidence button').forEach(b => b.onclick = () => {
         evidence = b.dataset.e;
@@ -1338,7 +1371,7 @@
         </div>
       </div>
       <div class="field"><label>Custo em pontos ⭐</label>
-        <input class="input" id="r-cost" inputmode="numeric" value="${existing?.cost ?? recReward(type)}" />
+        <input class="input" id="r-cost" inputmode="numeric" value="${existing?.cost ?? recReward(type, childIds)}" />
         <div class="chips" id="r-cost-chips" style="margin-top:9px">
           ${[25, 50, 100, 150, 200].map(p => `<button class="chip" data-p="${p}">${p}</button>`).join('')}
         </div>
@@ -1357,7 +1390,10 @@
       const cHint = sheet.querySelector('#r-cost-hint');
       const syncCost = () => {
         sheet.querySelectorAll('#r-cost-chips .chip').forEach(c => c.classList.toggle('active', +c.dataset.p === +cInput.value));
-        cHint.innerHTML = `💡 estilo ${parentStyle().label}: ${REWARD_TYPE_LABEL[type]} costuma valer ~<b>${recReward(type)}</b> pts`;
+        const oneKid = childIds.length === 1;
+        const c = oneKid ? childById(childIds[0]) : null;
+        const who = c ? `de ${esc(c.name)}` : 'padrão da família';
+        cHint.innerHTML = `💡 estilo ${who} · ${parentStyle(childIds).label}: ${REWARD_TYPE_LABEL[type]} costuma valer ~<b>${recReward(type, childIds)}</b> pts`;
       };
       sheet.querySelectorAll('#r-cost-chips .chip').forEach(c => c.onclick = () => { cInput.value = c.dataset.p; syncCost(); });
       cInput.oninput = syncCost; syncCost();
@@ -1374,6 +1410,7 @@
         const id = b.dataset.k;
         childIds = childIds.includes(id) ? childIds.filter(x => x !== id) : [...childIds, id];
         b.classList.toggle('active');
+        syncCost();
       });
       sheet.querySelector('#r-save').onclick = () => {
         const title = sheet.querySelector('#r-title').value.trim();
