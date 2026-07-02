@@ -979,6 +979,8 @@
     </div>`;
     $app.querySelector('[data-gear]').onclick = (e) => go(e.currentTarget.dataset.gear);
     bindNav();
+    $app.querySelectorAll('[data-go]').forEach(b =>
+      b.addEventListener('click', () => go(b.dataset.go)));
     $app.querySelectorAll('[data-kid-detail]').forEach(b =>
       b.addEventListener('click', () => go('p/analytics')));
   }
