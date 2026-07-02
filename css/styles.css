@@ -1537,8 +1537,8 @@ audio { width: 100%; margin-top: 10px; }
 /* alerta de missões expiradas (embaixo do relógio de lembrete) */
 .expired-alert {
   position: fixed; right: 18px;
-  bottom: calc(46px + var(--safe-bottom));
-  z-index: 58;
+  bottom: calc(160px + var(--safe-bottom));
+  z-index: 91;
   display: flex; align-items: center; gap: 5px;
   padding: 7px 13px; border-radius: var(--radius-full);
   background: rgba(248, 113, 113, 0.16);
@@ -1574,3 +1574,8 @@ audio { width: 100%; margin-top: 10px; }
 
 /* seletor de estilo por filho (mais compacto p/ caber 3 opções no sheet) */
 .segmented.seg-style button { font-size: 12px; padding-left: 4px; padding-right: 4px; }
+
+/* gráfico denso (30 dias) — barras mais finas e sem gap grande */
+.bar-chart.bar-chart-dense { gap: 2px; }
+.bar-chart.bar-chart-dense .bar-col { min-width: 0; }
+.bar-chart.bar-chart-dense .bar-label { font-size: 8.5px; }

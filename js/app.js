@@ -470,7 +470,7 @@
       </div>
 
       <div class="settings-group">
-        <button class="settings-row" data-switch><span class="ico">${icon('users')}</span><span class="label">trocar de perfil</span><span class="chev">›</span></button>
+        <button class="settings-row" data-switch><span class="ico">${icon('users')}</span><span class="label">trocar de perfil${role === 'child' ? ' 🔒' : ''}</span><span class="chev">›</span></button>
         ${canInstall ? `<button class="settings-row" data-install><span class="ico">${icon('install')}</span><span class="label">instalar o app</span><span class="chev">›</span></button>` : ''}
         <button class="settings-row" data-about><span class="ico">${icon('info')}</span><span class="label">sobre o deserve</span><span class="chev">›</span></button>
       </div>
@@ -554,7 +554,15 @@
     };
     $app.querySelector('[data-terms]').onclick = () => openInfoSheet('termos de uso', TERMS_HTML);
     $app.querySelector('[data-privacy]').onclick = () => openInfoSheet('política de privacidade', PRIVACY_HTML);
-    $app.querySelector('[data-switch]').onclick = () => { A.logout(); go(''); };
+    $app.querySelector('[data-switch]').onclick = () => {
+      // filhos não trocam de perfil sozinhos — exige o PIN dos pais
+      if (state.session?.role === 'child') {
+        const pin = prompt('PIN dos pais para trocar de perfil:');
+        if (pin === null) return;
+        if (pin.trim() !== state.parentPin) { toast('PIN incorreto', '🔒'); return; }
+      }
+      A.logout(); go('');
+    };
     const inst = $app.querySelector('[data-install]');
     if (inst) inst.onclick = () => window.deferredInstall.prompt();
     $app.querySelector('[data-about]').onclick = openAboutSheet;
@@ -673,24 +681,63 @@
   /* ---------- Setup da família ---------- */
 
   function viewSetup() {
+    let step = 1;
+    let familyName = '';
+    let pin = '';
     let kids = [];
 
-    function renderSetup() {
+    const bindDemo = () => {
+      const d = $app.querySelector('#setup-demo');
+      if (d) d.onclick = () => {
+        A.seedDemo();
+        celebrate('Família demo criada! PIN dos pais: 1234', '🎉');
+        go(''); render();
+      };
+    };
+
+    // Passo 1 — dados dos pais (nome da família + PIN)
+    function renderStep1() {
       $app.innerHTML = `
       <div class="screen no-nav">
         <div class="header"><div class="title-wrap">
           <div class="header-orb" data-orb></div><h1 style="font-size:22px">Sua família</h1>
         </div></div>
         <div class="stagger">
+          <p class="xsmall muted" style="margin-bottom:10px">Passo 1 de 2 · dados dos pais</p>
           <div class="field">
             <label>Nome da família</label>
-            <input class="input" id="fam-name" placeholder="ex: Família Silva" maxlength="30" />
+            <input class="input" id="fam-name" placeholder="ex: Família Silva" maxlength="30" value="${esc(familyName)}" />
           </div>
           <div class="field">
             <label>PIN dos pais (4 dígitos)</label>
-            <input class="input" id="fam-pin" placeholder="••••" inputmode="numeric" maxlength="4" type="password" />
+            <input class="input" id="fam-pin" placeholder="••••" inputmode="numeric" maxlength="4" type="password" value="${esc(pin)}" />
             <p class="xsmall muted" style="margin-top:5px">Protege a área dos pais — aprovações, tarefas e prêmios.</p>
           </div>
+          <button class="btn btn-aurora" id="to-step2" style="margin-top:20px">Continuar →</button>
+          <button class="btn btn-ghost" id="setup-demo" style="margin-top:10px">Explorar com dados de exemplo</button>
+          <p class="xsmall muted" style="text-align:center;margin-top:6px">Cria uma família pronta (Theo e Mia) com missões para você testar.</p>
+        </div>
+      </div>`;
+      mountOrb($app.querySelector('[data-orb]'), 34);
+      bindDemo();
+      $app.querySelector('#to-step2').onclick = () => {
+        familyName = $app.querySelector('#fam-name').value.trim();
+        pin = $app.querySelector('#fam-pin').value.trim();
+        if (!/^\d{4}$/.test(pin)) { toast('O PIN precisa ter 4 números', '🔒'); return; }
+        step = 2; renderStep2();
+      };
+    }
+
+    // Passo 2 — filhos
+    function renderStep2() {
+      $app.innerHTML = `
+      <div class="screen no-nav">
+        <div class="header">
+          <div class="title-wrap"><button class="back-btn" id="back-step1">←</button></div>
+        </div>
+        <div class="stagger">
+          <h1 style="font-size:22px;margin-bottom:2px">Filhos</h1>
+          <p class="xsmall muted" style="margin-bottom:14px">Passo 2 de 2 · adicione os filhos de ${esc(familyName || 'sua família')}</p>
           <div class="section-head"><h2>Filhos</h2>
             <button class="link-btn" id="add-kid">+ Adicionar</button>
           </div>
@@ -704,30 +751,22 @@
               </div>`).join('')}
           </div>
           <button class="btn btn-aurora" id="finish" style="margin-top:20px" ${kids.length ? '' : 'disabled'}>Criar família ✨</button>
-          <button class="btn btn-ghost" id="setup-demo" style="margin-top:10px">Explorar com dados de exemplo</button>
-          <p class="xsmall muted" style="text-align:center;margin-top:6px">Cria uma família pronta (Theo e Mia) com missões para você testar.</p>
         </div>
       </div>`;
       mountOrb($app.querySelector('[data-orb]'), 34);
-      $app.querySelector('#setup-demo').onclick = () => {
-        A.seedDemo();
-        celebrate('Família demo criada! PIN dos pais: 1234', '🎉');
-        go(''); render();
-      };
-      $app.querySelector('#add-kid').onclick = () => openKidSheet(k => { kids.push(k); renderSetup(); });
+      $app.querySelector('#back-step1').onclick = () => { step = 1; renderStep1(); };
+      $app.querySelector('#add-kid').onclick = () => openKidSheet(k => { kids.push(k); renderStep2(); });
       $app.querySelectorAll('[data-rm]').forEach(b =>
-        b.onclick = () => { kids.splice(+b.dataset.rm, 1); renderSetup(); });
+        b.onclick = () => { kids.splice(+b.dataset.rm, 1); renderStep2(); });
       $app.querySelector('#finish').onclick = () => {
-        const familyName = $app.querySelector('#fam-name').value.trim() || 'Minha família';
-        const pin = $app.querySelector('#fam-pin').value.trim();
-        if (!/^\d{4}$/.test(pin)) { toast('O PIN precisa ter 4 números', '🔒'); return; }
         if (!kids.length) { toast('Adicione pelo menos um filho', '🧒'); return; }
-        A.setupFamily({ familyName, pin, children: kids });
+        A.setupFamily({ familyName: familyName || 'Minha família', pin, children: kids });
         celebrate('Família criada! Bem-vindos ao Deserve', '🎉');
         go(''); render();
       };
     }
-    renderSetup();
+
+    renderStep1();
   }
 
   function openKidSheet(onSave, existing) {
@@ -1441,7 +1480,7 @@
       bindHeader(); bindNav(); return;
     }
     const a = H.analyticsFor(child.id, analyticsPeriod);
-    const last7 = a.series.slice(-7);
+    const series = a.series;
 
     const insight = a.rate >= 80
       ? `${child.name} está voando! 🚀 Taxa de ${a.rate}% — considere celebrar com um prêmio surpresa.`
@@ -1472,18 +1511,25 @@
         </div>
 
         <div class="card" style="margin-bottom:14px">
-          <h3 style="margin-bottom:10px">Últimos 7 dias</h3>
-          <div class="bar-chart">
-            ${last7.map(d => {
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+            <h3>Saúde das missões</h3>
+            <span class="xsmall muted">últimos ${analyticsPeriod} dias</span>
+          </div>
+          <div class="bar-chart ${analyticsPeriod > 7 ? 'bar-chart-dense' : ''}">
+            ${series.map((d, i) => {
               const pct = d.due ? (d.done / d.due) : 0;
               const day = new Date(d.date + 'T12:00:00');
+              const label = analyticsPeriod <= 7
+                ? WEEKDAYS[day.getDay()]
+                : (i % 5 === 0 || i === series.length - 1 ? day.getDate() : '');
               return `
               <div class="bar-col">
-                <div class="bar ${d.due === 0 ? 'empty' : ''}" style="height:${Math.max(4, pct * 100)}%"></div>
-                <div class="bar-label">${WEEKDAYS[day.getDay()]}</div>
+                <div class="bar ${d.due === 0 ? 'empty' : ''}" style="height:${Math.max(4, pct * 100)}%" title="${d.date}: ${d.done}/${d.due}"></div>
+                <div class="bar-label">${label}</div>
               </div>`;
             }).join('')}
           </div>
+          <p class="xsmall muted" style="margin-top:8px;text-align:center">${a.doneTotal} de ${a.dueTotal} missões conquistadas · ${a.rate}% no período</p>
         </div>
 
         <div class="card card-aurora" style="margin-bottom:14px">
